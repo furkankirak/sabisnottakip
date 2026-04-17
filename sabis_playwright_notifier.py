@@ -1,3 +1,5 @@
+import sys
+sys.stdout.reconfigure(encoding="utf-8")
 import json
 import os
 from pathlib import Path
@@ -10,6 +12,7 @@ SABIS_USERNAME = os.getenv("SABIS_USERNAME")
 SABIS_PASSWORD = os.getenv("SABIS_PASSWORD")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+GROUP_CHAT_ID = "-1003825108733"
 
 LOGIN_URL = "https://login.sabis.sakarya.edu.tr/Account/Login?ReturnUrl=%2Fconnect%2Fauthorize%2Fcallback%3Fclient_id%3Dobs.sabis.sakarya.edu.tr%26redirect_uri%3Dhttps%253A%252F%252Fobs.sabis.sakarya.edu.tr%252Fsignin-oidc%26response_type%3Dcode%26scope%3Dopenid%2520obsapi%2520baumapi%2520offline_access%2520sauid%2520profile%26code_challenge%3Dtest%26code_challenge_method%3DS256%26response_mode%3Dform_post%26nonce%3Dtest%26state%3Dtest"
 DERS_URL = "https://obs.sabis.sakarya.edu.tr/Ders"
@@ -130,7 +133,17 @@ def send_telegram_message(text: str):
         timeout=30
     )
     response.raise_for_status()
-
+def send_telegram_message2(text: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    response = requests.post(
+        url,
+        data={
+            "chat_id": GROUP_CHAT_ID,
+            "text": text
+        },
+        timeout=30
+    )
+    response.raise_for_status()
 
 def validate_config():
     required = {
@@ -259,7 +272,7 @@ def main():
         return
 
     lines = []
-
+    
     if added:
         lines.append("Sabis Not Güncellemesi:")
         for item in sorted(added):
@@ -276,13 +289,33 @@ def main():
             calisma_tipi = item[4]
             notu = item[5]
             lines.append(f" - {ders_adi} {calisma_tipi} notu: {notu}")
-
     message = "\n".join(lines)
-    print(message)
 
+    print(message)
     send_telegram_message(message)
     print("Telegram mesaji gonderildi.")
+    lines2 = []
+    if added:
+        lines2.append("Sabis Not Güncellemesi:")
+        for item in sorted(added):
+            ders_adi = item[1]
+            calisma_tipi = item[4]
+            lines2.append(f" - {ders_adi} {calisma_tipi} Sinav Notu Aciklandi")
+    if removed:
+        if lines2:
+            lines2.append("")
+        lines2.append("Artik gorunmeyen eski notlar:")
+        for item in sorted(removed):
+            ders_adi = item[1]
+            calisma_tipi = item[4]
+            lines2.append(f" - {ders_adi} {calisma_tipi} Sinav notu silindi")
 
+    message2 = "\n".join(lines2)
+
+    print(message2)
+    send_telegram_message2(message2)
+    print("Telegram2 mesaji gonderildi.")
+    
     save_state(new_items)
     print("state.json guncellendi.")
 
