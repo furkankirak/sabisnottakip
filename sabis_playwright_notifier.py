@@ -261,16 +261,21 @@ def main():
     lines = []
 
     if added:
-        lines.append("Yeni eklenen / degisen notlar:")
+        lines.append("Sabis Not Güncellemesi:")
         for item in sorted(added):
-            lines.append(" - " + " | ".join(item))
-
+            ders_adi = item[1]
+            calisma_tipi = item[4]
+            notu = item[5]
+            lines.append(f" - {ders_adi} {calisma_tipi} notu: {notu}")
     if removed:
         if lines:
             lines.append("")
         lines.append("Artik gorunmeyen eski notlar:")
         for item in sorted(removed):
-            lines.append(" - " + " | ".join(item))
+            ders_adi = item[1]
+            calisma_tipi = item[4]
+            notu = item[5]
+            lines.append(f" - {ders_adi} {calisma_tipi} notu: {notu}")
 
     message = "\n".join(lines)
     print(message)
