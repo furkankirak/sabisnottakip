@@ -2,7 +2,7 @@ name: SABIS Not Takip
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Repo'yu cek
+      - name: Repoyu cek
         uses: actions/checkout@v5
 
       - name: Python kur
