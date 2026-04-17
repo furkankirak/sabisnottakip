@@ -1,5 +1,13 @@
 [
   {
+    "ders_kodu": "BSM308",
+    "ders_adi": "SİSTEM PROGRAMLAMA",
+    "grup": "1. Öğretim A Grubu",
+    "oran": "30",
+    "calisma_tipi": "Ara Sınav",
+    "not": "96"
+  },
+  {
     "ders_kodu": "BSM312",
     "ders_adi": "ALGORİTMA ANALİZİ VE TASARIMI",
     "grup": "1. Öğretim A Grubu",
