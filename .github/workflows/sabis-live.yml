@@ -1,19 +1,25 @@
-name: SABIS Not Takip
+name: SABIS Live Check
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "5 */6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: sabis-live-check
+  cancel-in-progress: false
+
 jobs:
-  check:
+  live-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 355
 
     steps:
-      - name: Repo'yu cek
-        uses: actions/checkout@v5
+      - name: Repo cek
+        uses: actions/checkout@v4
 
       - name: Python kur
         uses: actions/setup-python@v5
@@ -24,20 +30,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Playwright Chromium kur
+        run: |
           python -m playwright install --with-deps chromium
 
-      - name: SABIS kontrolu
+      - name: Canli kontrol baslat
         env:
           SABIS_USERNAME: ${{ secrets.SABIS_USERNAME }}
           SABIS_PASSWORD: ${{ secrets.SABIS_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python sabis_playwright_notifier.py
+          GROUP_CHAT_ID: ${{ secrets.GROUP_CHAT_ID }}
+          GROUP_TOPIC_ID: ${{ secrets.GROUP_TOPIC_ID }}
+        run: |
+          python sabis_live_loop.py
 
-      - name: state.json commit et
+      - name: state dosyasini commit et
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state.json
-          git diff --cached --quiet || git commit -m "Update state.json"
+          git add state_local.json || true
+          git diff --cached --quiet || git commit -m "Update SABIS state"
           git push
