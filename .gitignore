@@ -2,3 +2,4 @@ live_ders.html
 __pycache__/
 *.pyc
 .env
+state_local.json

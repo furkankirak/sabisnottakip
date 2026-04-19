@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sabis-live-check
@@ -35,6 +35,14 @@ jobs:
         run: |
           python -m playwright install --with-deps chromium
 
+      - name: Eski state cache'den yukle
+        uses: actions/cache/restore@v4
+        with:
+          path: state_local.json
+          key: sabis-state-${{ github.run_id }}
+          restore-keys: |
+            sabis-state-
+
       - name: Canli kontrol baslat
         env:
           SABIS_USERNAME: ${{ secrets.SABIS_USERNAME }}
@@ -46,11 +54,17 @@ jobs:
         run: |
           python -u sabistakip.py
 
-      - name: state dosyasini commit et
+      - name: Yeni state'i cache'e kaydet
         if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state_local.json || true
-          git diff --cached --quiet || git commit -m "Update SABIS state"
-          git push
+        uses: actions/cache/save@v4
+        with:
+          path: state_local.json
+          key: sabis-state-${{ github.run_id }}
+
+      - name: State dosyasini artifact olarak yukle
+        if: failure() || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabis-state
+          path: state_local.json
+          if-no-files-found: ignore

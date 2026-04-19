@@ -1,6 +1,3 @@
-import sys
-sys.stdout.reconfigure(line_buffering=True)
-sys.stderr.reconfigure(line_buffering=True)
 # -*- coding: utf-8 -*-
 import json
 import os
@@ -12,13 +9,10 @@ import requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
+sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+sys.stderr.reconfigure(encoding="utf-8", line_buffering=True)
 
 
-# =========================
-# ENV / SETTINGS
-# =========================
 SABIS_USERNAME = os.getenv("SABIS_USERNAME")
 SABIS_PASSWORD = os.getenv("SABIS_PASSWORD")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -35,19 +29,17 @@ LOGIN_URL = (
     "%2520sauid%2520profile%26code_challenge%3Dtest%26code_challenge_method%3DS256"
     "%26response_mode%3Dform_post%26nonce%3Dtest%26state%3Dtest"
 )
+
 DERS_URL = "https://obs.sabis.sakarya.edu.tr/Ders"
 
 STATE_FILE = Path("state_local.json")
 DEBUG_HTML_FILE = Path("live_ders.html")
 
 CHECK_INTERVAL_SECONDS = 10
-MAX_RUNTIME_SECONDS = 5 * 60 * 60 + 50 * 60   # 5 saat 50 dk
+MAX_RUNTIME_SECONDS = 5 * 60 * 60 + 50 * 60
 HEADLESS = True
 
 
-# =========================
-# HELPERS
-# =========================
 def validate_config():
     required = {
         "SABIS_USERNAME": SABIS_USERNAME,
@@ -85,6 +77,7 @@ def save_state(items):
         json.dumps(items, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
+    print(f"{STATE_FILE} yazildi. Kayit sayisi: {len(items)}", flush=True)
 
 
 def compare(old_items, new_items):
@@ -177,12 +170,15 @@ def send_telegram_message(chat_id: str, text: str, message_thread_id=None):
         "chat_id": chat_id,
         "text": text,
     }
+
     if message_thread_id is not None:
         data["message_thread_id"] = int(message_thread_id)
 
     response = requests.post(url, data=data, timeout=30)
+
     if response.status_code != 200:
-        print("Telegram hata:", response.status_code, response.text)
+        print("Telegram hata:", response.status_code, response.text, flush=True)
+
     response.raise_for_status()
 
 
@@ -233,11 +229,14 @@ def build_group_message(added, removed):
 
 
 def safe_goto(page, url: str, timeout: int = 60000):
+    print(f"Gidiliyor: {url}", flush=True)
     page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+    print("domcontentloaded tamam", flush=True)
     try:
         page.wait_for_load_state("networkidle", timeout=10000)
+        print("networkidle tamam", flush=True)
     except PlaywrightTimeoutError:
-        pass
+        print("networkidle timeout, devam ediliyor", flush=True)
 
 
 def is_login_page(page) -> bool:
@@ -270,9 +269,10 @@ def is_ders_page(page) -> bool:
 
 
 def do_login(page):
-    print("Login yapiliyor...")
+    print("Login yapiliyor...", flush=True)
     safe_goto(page, LOGIN_URL)
     print("Login sayfasi acildi", flush=True)
+
     username_selectors = [
         'input[name="Username"]',
         'input[name="username"]',
@@ -297,6 +297,7 @@ def do_login(page):
 
     if not username_filled:
         raise RuntimeError("Kullanici adi inputu bulunamadi.")
+    print("Kullanici adi yazildi", flush=True)
 
     password_filled = False
     for sel in password_selectors:
@@ -310,6 +311,7 @@ def do_login(page):
 
     if not password_filled:
         raise RuntimeError("Sifre inputu bulunamadi.")
+    print("Sifre yazildi", flush=True)
 
     login_button_selectors = [
         'button[type="submit"]',
@@ -332,23 +334,27 @@ def do_login(page):
 
     if not clicked:
         raise RuntimeError("Giris butonu bulunamadi.")
+    print("Giris butonuna tiklandi", flush=True)
 
     try:
         page.wait_for_load_state("networkidle", timeout=15000)
+        print("Login sonrasi networkidle tamam", flush=True)
     except PlaywrightTimeoutError:
-        pass
+        print("Login sonrasi networkidle timeout", flush=True)
 
     fresh_url = f"{DERS_URL}?t={int(time.time())}"
+    print("Ders sayfasina gidiliyor", flush=True)
     safe_goto(page, fresh_url)
 
     if is_login_page(page):
         raise RuntimeError("Login basarisiz; hala login sayfasindasin.")
 
     if not is_ders_page(page):
-        print("Uyari: ders sayfasi gibi gorunmuyor ama devam ediliyor.")
+        print("Uyari: ders sayfasi gibi gorunmuyor ama devam ediliyor.", flush=True)
 
 
 def fetch_ders_html(page) -> str:
+    print("fetch_ders_html basladi", flush=True)
     fresh_url = f"{DERS_URL}?t={int(time.time())}"
     safe_goto(page, fresh_url)
 
@@ -356,6 +362,7 @@ def fetch_ders_html(page) -> str:
         raise RuntimeError("Oturum dusmus, login sayfasina gidildi.")
 
     html = page.content()
+    print("HTML alindi", flush=True)
     DEBUG_HTML_FILE.write_text(html, encoding="utf-8")
     return html
 
@@ -364,14 +371,17 @@ def main():
     print("main() basladi", flush=True)
     validate_config()
     print("validate_config tamam", flush=True)
+
     start_time = time.time()
 
     with sync_playwright() as p:
         print("Playwright acildi", flush=True)
         browser = p.chromium.launch(headless=HEADLESS)
         print("Browser acildi", flush=True)
+
         context = browser.new_context()
         print("Context olustu", flush=True)
+
         context.set_extra_http_headers({
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
@@ -386,75 +396,78 @@ def main():
 
             while True:
                 if time.time() - start_time > MAX_RUNTIME_SECONDS:
-                    print("Maksimum calisma suresi doldu, cikiliyor...")
+                    print("Maksimum calisma suresi doldu, cikiliyor...", flush=True)
                     break
 
                 old_items = load_state()
 
                 try:
-                    print("=" * 60)
-                    print("Calisma zamani:", time.strftime("%Y-%m-%d %H:%M:%S"))
+                    print("=" * 60, flush=True)
+                    print("Calisma zamani:", time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
 
                     html = fetch_ders_html(page)
                     current_url = page.url
                     new_items = parse_sabis_html(html)
 
-                    print("Final URL:", current_url)
+                    print("Final URL:", current_url, flush=True)
+                    print("Eski dolu not:", len(old_items),flush=True)
+                    print("Yeni dolu not:", len(new_items),flush=True)
 
                     if not old_items:
                         save_state(new_items)
-                        print("Ilk calisma: state dosyasi olusturuldu, mesaj atilmadi.")
+                        print("Ilk calisma: state dosyasi olusturuldu, mesaj atilmadi.", flush=True)
                     else:
                         added, removed = compare(old_items, new_items)
 
                         if not added and not removed:
-                            print("Degisiklik yok.")
+                            print("Degisiklik yok.", flush=True)
                         else:
                             private_message = build_private_message(added, removed)
                             if private_message:
-                                print(private_message)
+                                print(private_message, flush=True)
                                 send_telegram_message(TELEGRAM_CHAT_ID, private_message)
-                                print("Telegram ozel mesaj gonderildi.")
+                                print("Telegram ozel mesaj gonderildi.", flush=True)
 
                             if GROUP_CHAT_ID:
                                 group_message = build_group_message(added, removed)
                                 if group_message:
-                                    print(group_message)
+                                    print(group_message, flush=True)
                                     send_telegram_message(
                                         GROUP_CHAT_ID,
                                         group_message,
                                         message_thread_id=GROUP_TOPIC_ID
                                     )
-                                    print("Telegram grup mesaji gonderildi.")
+                                    print("Telegram grup mesaji gonderildi.", flush=True)
 
                             save_state(new_items)
-                            print("state dosyasi guncellendi.")
+                            print("state dosyasi guncellendi.", flush=True)
 
                 except KeyboardInterrupt:
-                    print("Program kullanici tarafindan durduruldu.")
+                    print("Program kullanici tarafindan durduruldu.", flush=True)
                     break
 
                 except Exception as e:
-                    print("HATA:", e)
+                    print("HATA:", e, flush=True)
 
                     try:
                         if is_login_page(page):
-                            print("Login sayfasi algilandi, yeniden giris yapiliyor...")
+                            print("Login sayfasi algilandi, yeniden giris yapiliyor...", flush=True)
                             do_login(page)
                         else:
-                            print("Sayfa yenilenip tekrar denenecek...")
+                            print("Sayfa yenilenip tekrar denenecek...", flush=True)
                             try:
                                 do_login(page)
                             except Exception as relogin_error:
-                                print("Yeniden login hatasi:", relogin_error)
+                                print("Yeniden login hatasi:", relogin_error, flush=True)
                     except Exception as e2:
-                        print("Oturum toparlama hatasi:", e2)
+                        print("Oturum toparlama hatasi:", e2, flush=True)
 
-                print(f"{CHECK_INTERVAL_SECONDS} saniye bekleniyor...")
+                print(f"{CHECK_INTERVAL_SECONDS} saniye bekleniyor...", flush=True)
                 time.sleep(CHECK_INTERVAL_SECONDS)
 
         finally:
             browser.close()
+            print("Browser kapatildi.", flush=True)
 
 
 if __name__ == "__main__":
