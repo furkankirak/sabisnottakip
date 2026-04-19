@@ -1,3 +1,6 @@
+import sys
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 # -*- coding: utf-8 -*-
 import json
 import os
@@ -269,7 +272,7 @@ def is_ders_page(page) -> bool:
 def do_login(page):
     print("Login yapiliyor...")
     safe_goto(page, LOGIN_URL)
-
+    print("Login sayfasi acildi", flush=True)
     username_selectors = [
         'input[name="Username"]',
         'input[name="username"]',
@@ -358,13 +361,17 @@ def fetch_ders_html(page) -> str:
 
 
 def main():
+    print("main() basladi", flush=True)
     validate_config()
+    print("validate_config tamam", flush=True)
     start_time = time.time()
 
     with sync_playwright() as p:
+        print("Playwright acildi", flush=True)
         browser = p.chromium.launch(headless=HEADLESS)
+        print("Browser acildi", flush=True)
         context = browser.new_context()
-
+        print("Context olustu", flush=True)
         context.set_extra_http_headers({
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
@@ -372,6 +379,7 @@ def main():
         })
 
         page = context.new_page()
+        print("Page olustu", flush=True)
 
         try:
             do_login(page)

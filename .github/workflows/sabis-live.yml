@@ -44,7 +44,7 @@ jobs:
           GROUP_CHAT_ID: ${{ secrets.GROUP_CHAT_ID }}
           GROUP_TOPIC_ID: ${{ secrets.GROUP_TOPIC_ID }}
         run: |
-          python sabistakip.py
+          python -u sabistakip.py
 
       - name: state dosyasini commit et
         if: always()
