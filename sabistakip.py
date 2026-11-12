@@ -414,8 +414,25 @@ def main():
                     print("Yeni dolu not:", len(new_items),flush=True)
 
                     if not old_items:
-                    #    save_state(new_items)
+                        save_state(new_items)
                         print("Ilk calisma: state dosyasi olusturuldu, mesaj atilmadi.", flush=True)
+                        
+                        private_message = build_private_message(added, removed)
+                        if private_message:
+                            print(private_message, flush=True)
+                            send_telegram_message(TELEGRAM_CHAT_ID, private_message)
+                            print("Telegram ozel mesaj gonderildi.", flush=True)
+
+                        if GROUP_CHAT_ID:
+                            group_message = build_group_message(added, removed)
+                            if group_message:
+                                print(group_message, flush=True)
+                                send_telegram_message(
+                                    GROUP_CHAT_ID,
+                                    group_message,
+                                    message_thread_id=GROUP_TOPIC_ID
+                                )
+                                print("Telegram grup mesaji gonderildi.", flush=True)
                     else:
                         added, removed = compare(old_items, new_items)
 
