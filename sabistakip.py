@@ -414,7 +414,7 @@ def main():
                     print("Yeni dolu not:", len(new_items),flush=True)
 
                     if not old_items:
-                        save_state(new_items)
+                    #    save_state(new_items)
                         print("Ilk calisma: state dosyasi olusturuldu, mesaj atilmadi.", flush=True)
                     else:
                         added, removed = compare(old_items, new_items)
